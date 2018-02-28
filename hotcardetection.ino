@@ -4,6 +4,7 @@
 //This so far is the rough framework. 
 //As of now, parts for the pressure, motion, and temperature sensors have arrived. This is what we have as of now 
 //New parts have been added to the code, and tests shows it is now responding more, meaning it is compiling and responding. 
+//Also the code has been recently edited to add detections for the temperature thresholds.
 
 #include <GSM.h> //Needed for sending the text message and 911 call
 
@@ -117,19 +118,24 @@ void loop() {
     //Start when both Motion Sensors come up true
     if (motion1 == true && motion2 == true) {
       if (CO2 <= 2) { //Test for CO2
+        Serial.println("CO2 concentration high!");
         //TODO code for the CO2 Sensor once parts arrive. 
       }
       
-      if (lower_bound <= val && val < mid_bound1) { //Test for above 80 degrees
+      if (lower_bound <= degreesF && degreesF < mid_bound1) { //Test for above 80 degrees
+        Serial.println("Temperature threshold 1");
         //TODO code for the first threshold once parts arrive
       }
-      else if (mid_bound1 <= val && val < mid_bound2) { //Test for above 85 degrees
+      else if (mid_bound1 <= degreesF && degreesF < mid_bound2) { //Test for above 85 degrees
+        Serial.println("Temperature threshold 2");
         //TODO code for the second threshold once parts arrive
       }
-      else if (mid_bound2 <= val && val < upper_bound) { //Test for above 85 degrees
+      else if (mid_bound2 <= degreesF && degreesF < upper_bound) { //Test for above 85 degrees
+        Serial.println("Temperature threshold 1");
         //TODO code for the third threshold once parts arrive
       }
-      else if (val >= upper_bound) { //Test for above 85 degrees
+      else if (degreesF >= upper_bound) { //Test for above 85 degrees
+        Serial.println("Temperature threshold 4");
         //TODO code for the last threshold once parts arrive
         vcs.voiceCall(call911buffer); //Phone 911 here
 
@@ -137,6 +143,7 @@ void loop() {
         vcs.hangCall(); //Hang up 911
       }
       else {
+        Serial.println("No Temperature threshold");
         //TODO code for no severe temperature threshold once parts arrive
       }
     }
