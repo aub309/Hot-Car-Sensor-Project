@@ -131,7 +131,7 @@ void loop() {
         //TODO code for the second threshold once parts arrive
       }
       else if (mid_bound2 <= degreesF && degreesF < upper_bound) { //Test for above 85 degrees
-        Serial.println("Temperature threshold 1");
+        Serial.println("Temperature threshold 3");
         //TODO code for the third threshold once parts arrive
       }
       else if (degreesF >= upper_bound) { //Test for above 85 degrees
