@@ -5,6 +5,7 @@
 //As of now, parts for the pressure, motion, and temperature sensors, and the window opener have arrived. This is what we have as of now 
 //New parts have been added to the code, for detecting pressure and CO2, as well as for opening the windows. 
 //Also the code has been recently edited to add detections for the temperature thresholds.
+//This time my group was unable to meet due to the snow. However, I was able to add code for detecting battery life and if the texting number has been set or not.
 
 #include <GSM.h> //Needed for sending the text message and 911 call
 #define PINNUMBER "0" //PIN number for the SIM Card used in the device
@@ -38,14 +39,17 @@ int valmotion1 = 0;  //Variable to hold motion reading of first motion sensor
 int valmotion2 = 0;  //Variable to hold motion reading of second motion sensor
 int pdetect = 0;     //Variable to hold voltage of the pressure sensor
 int co2detect = 0;   //Variable to hold voltage of the CO2 sensor
+int batterydetect = 0;   //Variable to hold voltage of battery life
 
 boolean motion1 = false; //Variable for the first Motion Detection
 boolean motion2 = false; //Variable for the second Motion Detection
 boolean pressure = false; //Variable for the pressure detection
 boolean co2high = false;  //Variable for the CO2 detection
 
-String call911 = "7179820203";  // variable for the 911 call, currently wired to my number as to keep from accidentally phoning the police
+String call911 = "17179820203";  // variable for the 911 call, currently wired to my number as to keep from accidentally phoning the police
 char call911buffer[11]; //Converts the call911 into Char Array for it to be used in vcs
+String smsnumber = "17179820203"; //Variable for the social message number
+char smsbuffer[11]; //Converts the smsnumber into Char Array for it to be used in vcs
 
 void setup() {
   Serial.begin(9600);
@@ -80,6 +84,7 @@ void setup() {
 }
 
 void loop() {
+   BatteryVoltage();
    call911.toCharArray(call911buffer, 3); //Convert the 911 phone number to a char array to be used in call911
    val = analogRead(TEMP0); //Get readings from the temperature sensor 
    pressure = analogRead(pressureSensor); //Get readings from the pressure detection
@@ -91,6 +96,7 @@ void loop() {
 
    pdetect = analogRead(A1); //Read Pressure Sensor Input Voltage
    co2detect = analogRead(A2); //Read CO2 Sensor Input Voltage
+   batterydetect = analogRead(A0);
    //Test CO2 and Pressure Outputs
    Serial.print("Pressure: ");
    Serial.println(pdetect);
@@ -170,20 +176,30 @@ void loop() {
       if (co2high == true) { //Test for CO2
         Serial.println("CO2 concentration high!");
         //Send Emergency Message to phone of the user. 
-        sms.beginSMS("17179820203");
-        sms.print("Alert, your child or pet is in danger in your vehicle. Please attend to them as soon as possible.");
-        sms.endSMS();
-        Serial.println("\nMessage Sent!\n");
+        if (smsnumber.equals("")) { //In case the user has not set their phone number yet
+          sms.print("No phone number set. Message send failure.");
+        }
+        else { //If the phone number has been set
+          sms.beginSMS(smsbuffer);
+          sms.print("Alert, your child or pet is in danger in your vehicle. Please attend to them as soon as possible.");
+          sms.endSMS();
+          Serial.println("\nMessage Sent!\n");
+        }
       }
       
       //Temperature Threshold code is now nested to allow each of them to run, instead of only one at a time
       if (lower_bound <= degreesF) { //Test for above 80 degrees
         Serial.println("Temperature threshold 1");
          //Send Emergency Message to phone of the user. 
-        sms.beginSMS("17179820203");
-        sms.print("Alert, your child or pet is in danger in your vehicle. Please attend to them as soon as possible.");
-        sms.endSMS();
-        Serial.println("\nMessage Sent!\n");
+        if (smsnumber.equals("")) { //In case the user has not set their phone number yet
+          sms.print("No phone number set. Message send failure.");
+        }
+        else { //If the phone number has been set
+          sms.beginSMS(smsbuffer);
+          sms.print("Alert, your child or pet is in danger in your vehicle. Please attend to them as soon as possible.");
+          sms.endSMS();
+          Serial.println("\nMessage Sent!\n");
+        }
 
         if (mid_bound1 <= degreesF) { //Test for above 85 degrees
           Serial.println("Temperature threshold 2");
@@ -246,4 +262,18 @@ int readSerial(char result[]) {
    }
 }
   
+void BatteryVoltage() //Function to test the battery juice left
+{
+  int batteryValue = analogRead(A0); //read the battery pin value of remaining power
+  float batteryvoltage = batteryValue * (5.00 / 1023.00) * 2; //convert the value to a true voltage.
+  Serial.print("Energy Left: ");
+  Serial.println(batteryvoltage);
+   if (batteryvoltage < 10.00) //set the voltage considered low battery here
+  {
+    Serial.println("Battery Level low. Must recharge.");
+  }
+  else {
+    Serial.println("Battery Level sufficient.");
+  }
+}
 
