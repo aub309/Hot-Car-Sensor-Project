@@ -6,9 +6,11 @@
 //New parts have been added to the code, for detecting pressure and CO2, as well as for opening the windows. 
 //Also the code has been recently edited to add detections for the temperature thresholds.
 //This time, I was able to allow it to connect to the SIM Card and allow it to send text messages
+//Also we have now made it work in sending the emergency message, and also put the emergency message in a separate function as to allow 
+//more object-oriented design and cleaner overall code. 
 
 #include <GSM.h> //Needed for sending the text message and 911 call
-#define PINNUMBER "1234" //PIN number for the SIM Card used in the device
+#define PINNUMBER "" //PIN number for the SIM Card used in the device
 
 //Variables for new GSM Shield input
 const int led_pin = 8;
@@ -27,8 +29,8 @@ int count=0;     // counter for buffer array
 
 const int TEMP0 = 0;   //Temperature Sensor is on pin A0
 int CO2 = 1;    //CO2 Sensor is on pin 1
-int motionDetect1 = 2;   //Motion Sensor 1 is on pin 2
-int motionDetect2 = 3;   //Motion Sensor 2 is on pin 3
+int motionDetect1 = 5;   //Motion Sensor 1 is on pin 2
+int motionDetect2 = 4;   //Motion Sensor 2 is on pin 3
 int pirState1 = LOW;      //We start, assuming no motion detected
 int pirState2 = LOW;      //We start, assuming no motion detected
 int pressureSensor = 4;  //Pressure Sensor is on pin 4
@@ -38,29 +40,34 @@ const int mid_bound1 = 85; //Middle bound 1 for the temperature detection
 const int mid_bound2 = 90; //Middle bound 2 for the temperature detection 
 const int upper_bound = 95; //Upper bound for the temperature detection 
 
-int val;     //Variable to hold analog reading. 
-int valmotion1;  //Variable to hold motion reading of first motion sensor
-int valmotion2;  //Variable to hold motion reading of second motion sensor
-int pdetect;     //Variable to hold voltage of the pressure sensor
-int co2detect;   //Variable to hold voltage of the CO2 sensor
-int batterydetect;   //Variable to hold voltage of battery life
+int val = 0;     //Variable to hold analog reading. 
+int valmotion1 = 5;  //Variable to hold motion reading of first motion sensor
+int valmotion2 = 4;  //Variable to hold motion reading of second motion sensor
+int pdetect = 0;     //Variable to hold voltage of the pressure sensor
+int co2detect = 0;   //Variable to hold voltage of the CO2 sensor
+int batterydetect = 0;   //Variable to hold voltage of battery life
 
-boolean motion1; //Variable for the first Motion Detection
-boolean motion2; //Variable for the second Motion Detection
-boolean pressure; //Variable for the pressure detection
-boolean co2high;  //Variable for the CO2 detection
+boolean motion1 = false; //Variable for the first Motion Detection
+boolean motion2 = false; //Variable for the second Motion Detection
+boolean pressure = false; //Variable for the pressure detection
+boolean co2high = false;  //Variable for the CO2 detection
 
 String call911 = "17179820203";  // variable for the 911 call, currently wired to my number as to keep from accidentally phoning the police
-char call911buffer[20]; //Converts the call911 into Char Array for it to be used in vcs
+char call911buffer[20] = "17179820203"; //Converts the call911 into Char Array for it to be used in vcs
 String smsnumber = "17179820203"; //Variable for the social message number
-char smsbuffer[20]; //Converts the smsnumber into Char Array for it to be used in vcs
+char smsbuffer[20] = "17179820203"; //Converts the smsnumber into Char Array for it to be used in vcs
 
 //Variables to make the emergency actions only run once, and not repeatedly.
-boolean sentmessage1;
-boolean sentmessage2;
-boolean soundedalarm;
-boolean windowsdown;
-boolean calledemergency;
+boolean sentmessage1 = false;
+boolean sentmessage2 = false;
+boolean soundedalarm = false;
+boolean windowsdown = false;
+boolean calledemergency = false;
+
+ char remoteNumber[20]= "17179820203";  
+
+// char array of the message
+char txtMsg[200]="Alert, your child or pet is in danger in your vehicle. Please attend to them as soon as possible.";
 
 void setup() {
   Serial.begin(9600);    
@@ -82,33 +89,7 @@ void setup() {
       delay(1000);
     }
   }
-
   Serial.println("GSM initialized");
-
-  pinMode(motionDetect1, INPUT);  // declare motionDetect1 as input
-  pinMode(motionDetect2, INPUT);  // declare motionDetect2 as input
-  pinMode(A1, INPUT); //For Pressure Input
-  pinMode(A2, INPUT); //For CO2 Input
-  pinMode(8, OUTPUT);  // sets the digital pin 8 as output for the window opener
-
-  //Set all emergency actions to false
-  sentmessage1 = false;
-  sentmessage2 = false;
-  soundedalarm = false;
-  windowsdown = false;
-  calledemergency = false;
-
-  val = 0;     //Variable to hold analog reading. 
-  valmotion1 = 0;  //Variable to hold motion reading of first motion sensor
-  valmotion2 = 0;  //Variable to hold motion reading of second motion sensor
-  pdetect = 0;     //Variable to hold voltage of the pressure sensor
-  co2detect = 0;   //Variable to hold voltage of the CO2 sensor
-  batterydetect = 0;   //Variable to hold voltage of battery life
-
-  motion1 = false; //Variable for the first Motion Detection
-  motion2 = false; //Variable for the second Motion Detection
-  pressure = false; //Variable for the pressure detection
-  co2high = false;  //Variable for the CO2 detection
 }
 
 void loop() {
@@ -209,11 +190,7 @@ void loop() {
             Serial.println("No phone number set. Message send failure.");
           }
           else { //If the phone number has been set
-            Serial.println("\nSending Message\n");
-            sms.beginSMS("17179820203");
-            sms.print("Alert, your child or pet is in danger in your vehicle. Please attend to them as soon as possible.");
-            sms.endSMS();
-            Serial.println("\nMessage Sent!\n");
+            sendEmergencyMessage(); //Invoke the emergency message
           }
           sentmessage1 = true; //Set variable after it has run to true.
         }
@@ -229,12 +206,7 @@ void loop() {
             Serial.println("No phone number set. Message send failure.");
           }
           else { //If the phone number has been set
-            Serial.println("\nSending Message\n");
-            sms.beginSMS("17179820203");
-            sms.print("Alert, your child or pet is in danger in your vehicle. Please attend to them as soon as possible.");
-            sms.endSMS();
-            Serial.println("\nMessage Sent!\n");
-            
+            sendEmergencyMessage();  //Invoke the emergency message
           }
           sentmessage2 = true; //Set variable after it has run to true.
          }
@@ -318,4 +290,22 @@ void BatteryVoltage() //Function to test the battery juice left
   else {
     Serial.println("Battery Level sufficient.");
   }
+}
+
+void sendEmergencyMessage() { //Function to send the emergency Message
+Serial.print("Message to mobile number: ");
+  Serial.println(smsbuffer);
+
+  // sms text
+  Serial.println("SENDING");
+  Serial.println();
+  Serial.println("Message:");
+  Serial.println(txtMsg);
+
+  // send the message
+  sms.beginSMS(smsbuffer);
+  sms.print(txtMsg);
+  sms.endSMS(); 
+  Serial.println("\nCOMPLETE!\n");  
+
 }
