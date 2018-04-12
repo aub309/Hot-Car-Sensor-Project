@@ -9,6 +9,8 @@
 //Also we have now made it work in sending the emergency message, and also put the emergency message in a separate function as to allow 
 //more object-oriented design and cleaner overall code. 
 
+//As of now, this is the code we are using in the final project demonstration.
+
 #include <GSM.h> //Needed for sending the text message and 911 call
 #define PINNUMBER "" //PIN number for the SIM Card used in the device
 
@@ -18,14 +20,9 @@ const int receive_pin = 4;
 int pinSpeaker = 5; 
 
 // initialize the library instance
-GSMPIN PINManager; //For the GSM Shield
 GSM gsmAccess; //For the phone functions
 GSM_SMS sms; //For the text message part
 GSMVoiceCall vcs; //For the phone call part for phoning 911
-
-//SoftwareSerial GPRS(7, 8);
-unsigned char buffer[64]; // buffer array for data recieve over serial port
-int count=0;     // counter for buffer array 
 
 const int TEMP0 = 0;   //Temperature Sensor is on pin A0
 int CO2 = 1;    //CO2 Sensor is on pin 1
@@ -52,22 +49,20 @@ boolean motion2 = false; //Variable for the second Motion Detection
 boolean pressure = false; //Variable for the pressure detection
 boolean co2high = false;  //Variable for the CO2 detection
 
-String call911 = "17179820203";  // variable for the 911 call, currently wired to my number as to keep from accidentally phoning the police
-char call911buffer[20] = "17179820203"; //Converts the call911 into Char Array for it to be used in vcs
+String call911 = "14847884770";  // variable for the 911 call, currently wired to my number as to keep from accidentally phoning the police
 String smsnumber = "17179820203"; //Variable for the social message number
-char smsbuffer[20] = "17179820203"; //Converts the smsnumber into Char Array for it to be used in vcs
+char smsbuffer[20]; //Converts the smsnumber or 911 number into Char Array for it to be used in vcs
 
 //Variables to make the emergency actions only run once, and not repeatedly.
 boolean sentmessage1 = false;
 boolean sentmessage2 = false;
 boolean soundedalarm = false;
 boolean windowsdown = false;
-boolean calledemergency = false;
-
- char remoteNumber[20]= "17179820203";  
+boolean calledemergency = false; 
 
 // char array of the message
-char txtMsg[200]="Alert, your child or pet is in danger in your vehicle. Please attend to them as soon as possible.";
+char txtMsg[100]="Alert, your child or pet is in danger in your vehicle. Please attend to them as soon as possible.";
+char txt911Msg[100]="Alert, there is child or pet in critical heat danger in this car. Please attend immediately.";
 
 void setup() {
   Serial.begin(9600);    
@@ -93,8 +88,7 @@ void setup() {
 }
 
 void loop() {
-   BatteryVoltage();
-   call911.toCharArray(call911buffer, 3); //Convert the 911 phone number to a char array to be used in call911
+   //BatteryVoltage();
    val = analogRead(TEMP0); //Get readings from the temperature sensor 
    pressure = analogRead(pressureSensor); //Get readings from the pressure detection
    float voltage, degreesC, degreesF;   //Variables for the pressure
@@ -225,18 +219,22 @@ void loop() {
           
           if (mid_bound2 <= degreesF) { //Test for above 90 degrees
             Serial.println("Temperature threshold 3");
-            //TODO code for the third threshold once parts arrive
+            //Could not make the Car Alarm sound due to required parts not coming in.
 
             if (upper_bound <= degreesF) { //Test for above 95 degrees
               Serial.println("Temperature threshold 4");
+              //Alert Emergency Services to attend to the problem
+              
+              if (calledemergency == false) {  //Code to make the emergency action not repeatedly run when threshold is hit
+                if (call911.equals("")) { //In case the user has not set their phone number yet
+                  Serial.println("No phone number set. Message send failure.");
+                }
+                else { //If the phone number has been set
+                  send911Message();  //Invoke the emergency message
+                }
+                  calledemergency = true; //Set variable after it has run to true.
+                }
 
-              if (calledemergency == false) { //Code to make the emergency action not repeatedly run when threshold is hit
-                //TODO code for the last threshold once parts arrive
-                vcs.voiceCall(call911buffer); //Phone 911 here
-      
-                vcs.hangCall(); //Hang up 911
-                calledemergency = true; //Set variable after it has run to true.
-              }
             }
           }
         }     
@@ -277,7 +275,7 @@ int readSerial(char result[]) {
    }
 }
   
-void BatteryVoltage() //Function to test the battery juice left
+/*void BatteryVoltage() //Function to test the battery juice left
 {
   int batteryValue = analogRead(A0); //read the battery pin value of remaining power
   float batteryvoltage = batteryValue * (5.00 / 1023.00) * 2; //convert the value to a true voltage.
@@ -290,10 +288,11 @@ void BatteryVoltage() //Function to test the battery juice left
   else {
     Serial.println("Battery Level sufficient.");
   }
-}
+}*/
 
 void sendEmergencyMessage() { //Function to send the emergency Message
 Serial.print("Message to mobile number: ");
+  smsnumber.toCharArray(smsbuffer, 20);
   Serial.println(smsbuffer);
 
   // sms text
@@ -306,6 +305,36 @@ Serial.print("Message to mobile number: ");
   sms.beginSMS(smsbuffer);
   sms.print(txtMsg);
   sms.endSMS(); 
+  sms.flush();
   Serial.println("\nCOMPLETE!\n");  
+  delay(1000);
+}
 
+void send911Message() { //Function to send the 911 Message
+//NOTE: Originally was to be phone call but made text call instead
+//Had to resort to text message due to Text To Speech Shield not coming in.
+/*if (calledemergency == false) { //Code to make the emergency action not repeatedly run when threshold is hit
+  //TODO code for the last threshold once parts arrive
+  vcs.voiceCall(call911buffer); //Phone 911 here
+  vcs.hangCall(); //Hang up 911
+  calledemergency = true; //Set variable after it has run to true.
+}*/
+
+Serial.print("Message to 911 number: ");
+  call911.toCharArray(smsbuffer, 20);
+  Serial.println(smsbuffer);
+
+  // sms text
+  Serial.println("SENDING");
+  Serial.println();
+  Serial.println("Message:");
+  Serial.println(txt911Msg);
+
+  // send the message
+  sms.beginSMS(smsbuffer);
+  sms.print(txt911Msg);
+  sms.endSMS(); 
+  sms.flush();
+  Serial.println("\nCOMPLETE!\n");  
+  delay(1000);
 }
